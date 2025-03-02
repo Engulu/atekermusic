@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -12,14 +12,15 @@ const firebaseConfig = {
   measurementId: "G-8NSMQNK0ZT"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+async function createAdmin() {
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-async function setupAdmin() {
   try {
-    // Sign in with existing account
-    const userCredential = await signInWithEmailAndPassword(
+    // Create user account
+    const userCredential = await createUserWithEmailAndPassword(
       auth,
       'enochaengulu@gmail.com',
       '2019JUSTgot'
@@ -27,35 +28,29 @@ async function setupAdmin() {
     
     const userId = userCredential.user.uid;
 
-    // Update admin document
+    // Create admin user document
     await setDoc(doc(db, 'users', userId), {
       email: 'enochaengulu@gmail.com',
       role: 'admin',
       status: 'active',
-      updatedAt: new Date(),
+      createdAt: new Date(),
       lastLogin: new Date(),
-      permissions: [
-        'manage_users',
-        'manage_content',
-        'view_analytics',
-        'manage_settings',
-        'approve_artists'
-      ],
+      permissions: ['manage_users', 'manage_content', 'view_analytics', 'manage_settings'],
       securitySettings: {
         twoFactorEnabled: false,
         lastPasswordChange: new Date(),
         loginAttempts: 0,
         accountLocked: false
       }
-    }, { merge: true }); // This will merge with existing document
+    });
 
-    console.log('✅ Admin user updated successfully!');
-    console.log('User ID:', userId);
+    console.log('✅ Admin user created successfully!');
     return { success: true, userId };
   } catch (error) {
-    console.error('❌ Error updating admin user:', error);
+    console.error('❌ Error creating admin user:', error);
     return { success: false, error };
   }
 }
 
-setupAdmin();
+// Run the function
+createAdmin(); 
