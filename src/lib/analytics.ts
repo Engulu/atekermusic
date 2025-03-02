@@ -1,4 +1,4 @@
-import { collection, addDoc, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, Timestamp, orderBy, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 
 export interface AnalyticsEvent {
@@ -74,6 +74,24 @@ export interface EventNotification {
   location?: string;
   attendees: string[];
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+}
+
+export interface Cohort {
+  id: string;
+  name: string;
+  description: string;
+  criteria: {
+    startDate: Date;
+    endDate: Date;
+    userProperties?: Record<string, any>;
+    events?: string[];
+  };
+  users: string[];
+  metrics: {
+    retention: Record<string, number>;
+    engagement: Record<string, number>;
+    conversion: Record<string, number>;
+  };
 }
 
 export const trackEvent = async (event: AnalyticsEvent) => {
@@ -307,4 +325,119 @@ function calculateConfidenceInterval(conversions: number, impressions: number): 
   const center = (p + z * z / (2 * impressions)) / denominator;
   const interval = z * Math.sqrt((p * (1 - p) + z * z / (4 * impressions)) / impressions) / denominator;
   return interval;
+}
+
+export const createCohort = async (cohort: Omit<Cohort, 'id' | 'users' | 'metrics'>) => {
+  try {
+    const docRef = await addDoc(collection(db, 'cohorts'), {
+      ...cohort,
+      users: [],
+      metrics: {
+        retention: {},
+        engagement: {},
+        conversion: {}
+      },
+      createdAt: new Date()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating cohort:', error);
+    throw error;
+  }
+};
+
+export const analyzeCohort = async (cohortId: string) => {
+  const cohortRef = doc(db, 'cohorts', cohortId);
+  const cohortDoc = await getDoc(cohortRef);
+  const cohort = cohortDoc.data() as Cohort;
+
+  // Get user behavior data for the cohort
+  const behaviorRef = collection(db, 'userBehavior');
+  const q = query(
+    behaviorRef,
+    where('userId', 'in', cohort.users),
+    where('timestamp', '>=', cohort.criteria.startDate),
+    where('timestamp', '<=', cohort.criteria.endDate)
+  );
+
+  const snapshot = await getDocs(q);
+  const behaviors = snapshot.docs.map(doc => doc.data());
+
+  // Calculate cohort metrics
+  const metrics = {
+    retention: calculateRetention(behaviors),
+    engagement: calculateEngagement(behaviors),
+    conversion: calculateConversion(behaviors)
+  };
+
+  // Update cohort with metrics
+  await updateDoc(cohortRef, { metrics });
+
+  return metrics;
+};
+
+function calculateRetention(behaviors: any[]) {
+  const retention: Record<string, number> = {};
+  const userSessions = groupByUser(behaviors);
+
+  // Calculate retention for different time periods (7d, 14d, 30d, etc.)
+  [7, 14, 30, 60, 90].forEach(days => {
+    const retainedUsers = userSessions.filter(session => {
+      const firstActivity = new Date(session[0].timestamp.toDate());
+      const lastActivity = new Date(session[session.length - 1].timestamp.toDate());
+      const daysActive = (lastActivity.getTime() - firstActivity.getTime()) / (1000 * 60 * 60 * 24);
+      return daysActive >= days;
+    }).length;
+
+    retention[`${days}d`] = (retainedUsers / userSessions.length) * 100;
+  });
+
+  return retention;
+}
+
+function calculateEngagement(behaviors: any[]) {
+  const engagement: Record<string, number> = {};
+  
+  // Calculate average session duration
+  const sessionDurations = behaviors.reduce((acc, curr) => {
+    if (curr.eventType === 'session_end' && curr.metadata?.duration) {
+      acc.push(curr.metadata.duration);
+    }
+    return acc;
+  }, [] as number[]);
+
+  engagement.averageSessionDuration = 
+    sessionDurations.reduce((a, b) => a + b, 0) / sessionDurations.length;
+
+  // Calculate events per user
+  const userEvents = groupByUser(behaviors);
+  engagement.eventsPerUser = 
+    behaviors.length / userEvents.length;
+
+  return engagement;
+}
+
+function calculateConversion(behaviors: any[]) {
+  const conversion: Record<string, number> = {};
+  
+  // Calculate conversion rates for different events
+  const eventTypes = ['music_play', 'download', 'share', 'comment'];
+  eventTypes.forEach(eventType => {
+    const eventCount = behaviors.filter(b => b.eventType === eventType).length;
+    conversion[eventType] = (eventCount / behaviors.length) * 100;
+  });
+
+  return conversion;
+}
+
+function groupByUser(behaviors: any[]) {
+  return Object.values(
+    behaviors.reduce((acc, curr) => {
+      if (!acc[curr.userId]) {
+        acc[curr.userId] = [];
+      }
+      acc[curr.userId].push(curr);
+      return acc;
+    }, {} as Record<string, any[]>)
+  );
 } 

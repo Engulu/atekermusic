@@ -313,5 +313,112 @@ export const emailTemplates = {
         <p>Best regards,<br>The Ateker Music Team</p>
       </div>
     `
+  }),
+
+  'personalized-recommendations': (data: any) => ({
+    subject: 'Your Personalized Music Recommendations',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Your Personalized Music Recommendations</h1>
+        <p>Dear ${data.userName},</p>
+        <p>Based on your listening history and preferences, here are some tracks we think you'll love:</p>
+        
+        ${data.recommendations.map((track: any) => `
+          <div style="margin: 20px 0; padding: 15px; background-color: #F3F4F6; border-radius: 5px;">
+            <h3 style="color: #4F46E5;">${track.title}</h3>
+            <p>by ${track.artist}</p>
+            <p style="color: #6B7280;">${track.genre}</p>
+            <p>${track.description}</p>
+            <div style="margin-top: 10px;">
+              <a href="${track.listenLink}" style="background-color: #4F46E5; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                Listen Now
+              </a>
+            </div>
+          </div>
+        `).join('')}
+        
+        <p>Want more recommendations? Check out our full collection:</p>
+        <div style="margin: 30px 0;">
+          <a href="${data.exploreLink}" style="background-color: #4F46E5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            Explore More
+          </a>
+        </div>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'similar-artists': (data: any) => ({
+    subject: `Artists Similar to ${data.favoriteArtist}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Discover Similar Artists</h1>
+        <p>Dear ${data.userName},</p>
+        <p>Since you enjoy ${data.favoriteArtist}, we think you might like these artists:</p>
+        
+        ${data.similarArtists.map((artist: any) => `
+          <div style="margin: 20px 0; padding: 15px; background-color: #F3F4F6; border-radius: 5px;">
+            <h3 style="color: #4F46E5;">${artist.name}</h3>
+            <p style="color: #6B7280;">${artist.genre}</p>
+            <p>${artist.description}</p>
+            <div style="margin-top: 10px;">
+              <a href="${artist.profileLink}" style="background-color: #4F46E5; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                View Profile
+              </a>
+            </div>
+          </div>
+        `).join('')}
+        
+        <p>Want to discover more artists?</p>
+        <div style="margin: 30px 0;">
+          <a href="${data.exploreLink}" style="background-color: #4F46E5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            Explore More Artists
+          </a>
+        </div>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'genre-discovery': (data: any) => ({
+    subject: 'Explore New Genres You Might Like',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Discover New Genres</h1>
+        <p>Dear ${data.userName},</p>
+        <p>Based on your listening preferences, here are some genres you might enjoy exploring:</p>
+        
+        ${data.genres.map((genre: any) => `
+          <div style="margin: 20px 0; padding: 15px; background-color: #F3F4F6; border-radius: 5px;">
+            <h3 style="color: #4F46E5;">${genre.name}</h3>
+            <p>${genre.description}</p>
+            <p>Popular tracks in this genre:</p>
+            <ul style="list-style: none; padding: 0;">
+              ${genre.popularTracks.map((track: any) => `
+                <li style="margin: 10px 0;">
+                  <strong>${track.title}</strong> by ${track.artist}
+                </li>
+              `).join('')}
+            </ul>
+            <div style="margin-top: 10px;">
+              <a href="${genre.exploreLink}" style="background-color: #4F46E5; color: white; padding: 8px 16px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                Explore Genre
+              </a>
+            </div>
+          </div>
+        `).join('')}
+        
+        <p>Want to discover more genres?</p>
+        <div style="margin: 30px 0;">
+          <a href="${data.exploreLink}" style="background-color: #4F46E5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            Explore All Genres
+          </a>
+        </div>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
   })
 }; 
