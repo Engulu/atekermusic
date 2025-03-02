@@ -42,6 +42,40 @@ export interface UserBehavior {
   };
 }
 
+export interface ABTest {
+  id: string;
+  name: string;
+  description: string;
+  startDate: Date;
+  endDate: Date;
+  variants: {
+    id: string;
+    name: string;
+    description: string;
+    config: Record<string, any>;
+  }[];
+  metrics: string[];
+  status: 'active' | 'completed' | 'draft';
+  results?: {
+    variantId: string;
+    impressions: number;
+    conversions: number;
+    conversionRate: number;
+    confidence: number;
+  }[];
+}
+
+export interface EventNotification {
+  id: string;
+  type: 'concert' | 'release' | 'meetup' | 'workshop';
+  title: string;
+  description: string;
+  date: Date;
+  location?: string;
+  attendees: string[];
+  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+}
+
 export const trackEvent = async (event: AnalyticsEvent) => {
   try {
     await addDoc(collection(db, 'analytics'), {
@@ -185,4 +219,92 @@ function getTimeDistribution(behaviors: any[]) {
     acc[curr.metadata.timeOfDay] = (acc[curr.metadata.timeOfDay] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+}
+
+export const createABTest = async (test: Omit<ABTest, 'id'>) => {
+  try {
+    const docRef = await addDoc(collection(db, 'abTests'), {
+      ...test,
+      createdAt: new Date(),
+      status: 'draft'
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating A/B test:', error);
+    throw error;
+  }
+};
+
+export const trackABTestVariant = async (testId: string, variantId: string, userId: string) => {
+  try {
+    await addDoc(collection(db, 'abTestImpressions'), {
+      testId,
+      variantId,
+      userId,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Error tracking A/B test variant:', error);
+  }
+};
+
+export const trackABTestConversion = async (testId: string, variantId: string, userId: string) => {
+  try {
+    await addDoc(collection(db, 'abTestConversions'), {
+      testId,
+      variantId,
+      userId,
+      timestamp: new Date()
+    });
+  } catch (error) {
+    console.error('Error tracking A/B test conversion:', error);
+  }
+};
+
+export const getABTestResults = async (testId: string) => {
+  const impressionsRef = collection(db, 'abTestImpressions');
+  const conversionsRef = collection(db, 'abTestConversions');
+  
+  const [impressionsSnapshot, conversionsSnapshot] = await Promise.all([
+    getDocs(query(impressionsRef, where('testId', '==', testId))),
+    getDocs(query(conversionsRef, where('testId', '==', testId)))
+  ]);
+
+  const impressions = impressionsSnapshot.docs.map(doc => doc.data());
+  const conversions = conversionsSnapshot.docs.map(doc => doc.data());
+
+  // Calculate results for each variant
+  const results = await Promise.all(
+    impressions.map(async (impression) => {
+      const variantConversions = conversions.filter(
+        conv => conv.variantId === impression.variantId
+      );
+      
+      const conversionRate = variantConversions.length / impressions.length;
+      const confidence = calculateConfidenceInterval(
+        variantConversions.length,
+        impressions.length
+      );
+
+      return {
+        variantId: impression.variantId,
+        impressions: impressions.length,
+        conversions: variantConversions.length,
+        conversionRate,
+        confidence
+      };
+    })
+  );
+
+  return results;
+};
+
+function calculateConfidenceInterval(conversions: number, impressions: number): number {
+  // Implement Wilson score interval calculation
+  const z = 1.96; // 95% confidence level
+  const p = conversions / impressions;
+  const denominator = 1 + z * z / impressions;
+  const center = (p + z * z / (2 * impressions)) / denominator;
+  const interval = z * Math.sqrt((p * (1 - p) + z * z / (4 * impressions)) / impressions) / denominator;
+  return interval;
 } 

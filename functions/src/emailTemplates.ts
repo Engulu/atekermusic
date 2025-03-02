@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+
 export const emailTemplates = {
   'artist-approved': (data: any) => ({
     subject: 'Welcome to Ateker Music!',
@@ -226,6 +228,85 @@ export const emailTemplates = {
         <div style="margin: 30px 0;">
           <a href="${data.viewLink}" style="background-color: #4F46E5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
             View Update
+          </a>
+        </div>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'event-reminder': (data: any) => ({
+    subject: `Reminder: ${data.eventTitle} is coming up!`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Event Reminder</h1>
+        <p>Dear ${data.userName},</p>
+        <p>This is a reminder that <strong>${data.eventTitle}</strong> is coming up soon!</p>
+        
+        <div style="margin: 20px 0; padding: 15px; background-color: #F3F4F6; border-radius: 5px;">
+          <p><strong>Date:</strong> ${format(data.date, 'MMMM d, yyyy')}</p>
+          <p><strong>Time:</strong> ${format(data.date, 'h:mm a')}</p>
+          ${data.location ? `<p><strong>Location:</strong> ${data.location}</p>` : ''}
+        </div>
+        
+        <p>${data.description}</p>
+        
+        <div style="margin: 30px 0;">
+          <a href="${data.eventLink}" style="background-color: #4F46E5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            View Event Details
+          </a>
+        </div>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'event-cancelled': (data: any) => ({
+    subject: `Important: ${data.eventTitle} has been cancelled`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Event Cancellation Notice</h1>
+        <p>Dear ${data.userName},</p>
+        <p>We regret to inform you that <strong>${data.eventTitle}</strong> has been cancelled.</p>
+        
+        <div style="margin: 20px 0; padding: 15px; background-color: #F3F4F6; border-radius: 5px;">
+          <p><strong>Original Date:</strong> ${format(data.date, 'MMMM d, yyyy')}</p>
+          <p><strong>Reason:</strong> ${data.reason}</p>
+        </div>
+        
+        ${data.rescheduledDate ? `
+          <p>We are pleased to inform you that the event has been rescheduled to:</p>
+          <p><strong>${format(data.rescheduledDate, 'MMMM d, yyyy')}</strong></p>
+        ` : ''}
+        
+        <p>If you have any questions, please don't hesitate to contact our support team.</p>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'event-update': (data: any) => ({
+    subject: `Update: ${data.eventTitle}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Event Update</h1>
+        <p>Dear ${data.userName},</p>
+        <p>There has been an update regarding <strong>${data.eventTitle}</strong>:</p>
+        
+        <div style="margin: 20px 0; padding: 15px; background-color: #F3F4F6; border-radius: 5px;">
+          ${data.changes.map(change => `
+            <p><strong>${change.field}:</strong> ${change.newValue}</p>
+          `).join('')}
+        </div>
+        
+        <p>${data.message}</p>
+        
+        <div style="margin: 30px 0;">
+          <a href="${data.eventLink}" style="background-color: #4F46E5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            View Updated Event Details
           </a>
         </div>
         
