@@ -1,17 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFirebase } from '../contexts/FirebaseContext';
-import { isAdmin } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
-interface ProtectedAdminRouteProps {
-  children: React.ReactNode;
-}
-
-export function ProtectedAdminRoute({ children }: ProtectedAdminRouteProps) {
+export function ProtectedAdminRoute({ children }: { children: React.ReactNode }) {
   const { currentUser } = useFirebase();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [isUserAdmin, setIsUserAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -21,10 +18,15 @@ export function ProtectedAdminRoute({ children }: ProtectedAdminRouteProps) {
       }
 
       try {
-        const adminStatus = await isAdmin(currentUser.uid);
-        setIsUserAdmin(adminStatus);
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const isUserAdmin = userDoc.exists() && userDoc.data()?.role === 'admin';
+        setIsAdmin(isUserAdmin);
+        if (!isUserAdmin) {
+          navigate('/');
+        }
       } catch (error) {
         console.error('Error checking admin status:', error);
+        navigate('/');
       } finally {
         setLoading(false);
       }
@@ -37,22 +39,5 @@ export function ProtectedAdminRoute({ children }: ProtectedAdminRouteProps) {
     return <div>Loading...</div>;
   }
 
-  if (!isUserAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Access Denied
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              You don't have permission to access the admin dashboard.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
+  return isAdmin ? <>{children}</> : null;
 } 
