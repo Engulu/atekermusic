@@ -19,6 +19,8 @@ import NewsPage from './pages/NewsPage';
 import BettingPredictionsPage from './pages/BettingPredictionsPage';
 import ArticlePage from './pages/ArticlePage';
 import Footer from './components/Footer';
+import { AdminDashboard } from './components/AdminDashboard';
+import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
 
 function App() {
   return (
@@ -46,9 +48,9 @@ function App() {
             <Route
               path="/admin"
               element={
-                <ProtectedRoute requiredRole="admin">
-                  <AdminDashboardPage />
-                </ProtectedRoute>
+                <ProtectedAdminRoute>
+                  <AdminDashboard />
+                </ProtectedAdminRoute>
               }
             />
             <Route path="/about" element={<AboutPage />} />
@@ -56,6 +58,14 @@ function App() {
             <Route path="/news" element={<NewsPage />} />
             <Route path="/news/:id" element={<ArticlePage />} />
             <Route path="/predictions" element={<BettingPredictionsPage />} />
+            <Route 
+              path="/admin/artists" 
+              element={
+                <ProtectedAdminRoute>
+                  <AdminDashboard />
+                </ProtectedAdminRoute>
+              } 
+            />
           </Routes>
           <hr className="border-gray-700 mx-4 md:mx-8 lg:mx-16" />
           <Footer />
