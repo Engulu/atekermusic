@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Song files and cover images
+    match /songs/{songId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        (request.auth.token.role == 'artist' || request.auth.token.role == 'admin');
+    }
+    
+    // Artist profile images
+    match /artists/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        (request.auth.uid == userId || request.auth.token.role == 'admin');
+    }
+    
+    // News article images
+    match /news/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.role == 'admin';
+    }
+    
+    // Event images
+    match /events/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        (request.auth.token.role == 'artist' || request.auth.token.role == 'admin');
+    }
+  }
+}
