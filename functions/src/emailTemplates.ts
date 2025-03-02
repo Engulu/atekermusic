@@ -126,5 +126,111 @@ export const emailTemplates = {
         <p>Best regards,<br>The Ateker Music Team</p>
       </div>
     `
+  }),
+
+  'marketing-campaign': (data: any) => ({
+    subject: data.subject || 'Special Update from Ateker Music',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">${data.title}</h1>
+        <p>Dear ${data.userName},</p>
+        
+        ${data.content}
+        
+        <div style="margin: 30px 0;">
+          <a href="${data.ctaLink}" style="background-color: #4F46E5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            ${data.ctaText}
+          </a>
+        </div>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'new-release': (data: any) => ({
+    subject: `New Release: ${data.artistName} - ${data.title}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">New Release Alert!</h1>
+        <p>Dear ${data.userName},</p>
+        <p>${data.artistName} has just released a new track: <strong>${data.title}</strong></p>
+        
+        <div style="margin: 20px 0;">
+          <img src="${data.coverArt}" alt="${data.title}" style="max-width: 100%; border-radius: 5px;">
+        </div>
+        
+        <p>${data.description}</p>
+        
+        <div style="margin: 30px 0;">
+          <a href="${data.listenLink}" style="background-color: #4F46E5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            Listen Now
+          </a>
+        </div>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'weekly-digest': (data: any) => ({
+    subject: 'Your Weekly Music Digest',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Your Weekly Music Digest</h1>
+        <p>Dear ${data.userName},</p>
+        <p>Here's what's new in your favorite genres this week:</p>
+        
+        ${data.genres.map(genre => `
+          <div style="margin: 20px 0; padding: 15px; background-color: #F3F4F6; border-radius: 5px;">
+            <h2 style="color: #4F46E5;">${genre.name}</h2>
+            <ul style="list-style: none; padding: 0;">
+              ${genre.tracks.map(track => `
+                <li style="margin: 10px 0;">
+                  <strong>${track.title}</strong> by ${track.artist}
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        `).join('')}
+        
+        <div style="margin: 30px 0;">
+          <a href="${data.exploreLink}" style="background-color: #4F46E5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            Explore More
+          </a>
+        </div>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'artist-update': (data: any) => ({
+    subject: `Update from ${data.artistName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Artist Update</h1>
+        <p>Dear ${data.userName},</p>
+        <p>${data.artistName} has shared an update with their fans:</p>
+        
+        <div style="margin: 20px 0; padding: 15px; background-color: #F3F4F6; border-radius: 5px;">
+          ${data.message}
+        </div>
+        
+        ${data.mediaUrl ? `
+          <div style="margin: 20px 0;">
+            <img src="${data.mediaUrl}" alt="Artist Update" style="max-width: 100%; border-radius: 5px;">
+          </div>
+        ` : ''}
+        
+        <div style="margin: 30px 0;">
+          <a href="${data.viewLink}" style="background-color: #4F46E5; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            View Update
+          </a>
+        </div>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
   })
 }; 
