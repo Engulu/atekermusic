@@ -1,0 +1,130 @@
+export const emailTemplates = {
+  'artist-approved': (data: any) => ({
+    subject: 'Welcome to Ateker Music!',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Welcome to Ateker Music!</h1>
+        <p>Dear ${data.artistName},</p>
+        <p>We're excited to inform you that your artist application has been approved! You are now officially part of the Ateker Music community.</p>
+        
+        <h2 style="color: #4F46E5; margin-top: 20px;">Next Steps:</h2>
+        <ol>
+          <li>Complete your artist profile</li>
+          <li>Upload your music</li>
+          <li>Connect with other artists</li>
+        </ol>
+        
+        <p style="margin-top: 20px;">If you have any questions, please don't hesitate to contact our support team.</p>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'artist-rejected': (data: any) => ({
+    subject: 'Artist Application Status Update',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Application Status Update</h1>
+        <p>Dear ${data.artistName},</p>
+        <p>Thank you for your interest in Ateker Music. After careful review of your application, we regret to inform you that we are unable to approve your artist application at this time.</p>
+        
+        <p>You are welcome to apply again in the future with updated information. We recommend:</p>
+        <ul>
+          <li>Adding more detailed information about your music</li>
+          <li>Including high-quality sample tracks</li>
+          <li>Providing a complete portfolio</li>
+        </ul>
+        
+        <p style="margin-top: 20px;">If you have any questions about this decision, please contact our support team.</p>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'welcome-email': (data: any) => ({
+    subject: 'Welcome to Ateker Music!',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Welcome to Ateker Music!</h1>
+        <p>Dear ${data.userName},</p>
+        <p>Thank you for joining Ateker Music! We're excited to have you as part of our community.</p>
+        
+        <h2 style="color: #4F46E5; margin-top: 20px;">Getting Started:</h2>
+        <ul>
+          <li>Complete your profile</li>
+          <li>Explore our music library</li>
+          <li>Connect with other music lovers</li>
+        </ul>
+        
+        <p style="margin-top: 20px;">If you have any questions, our support team is here to help!</p>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'password-reset': (data: any) => ({
+    subject: 'Password Reset Request',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Password Reset Request</h1>
+        <p>Dear ${data.userName},</p>
+        <p>We received a request to reset your password. Click the link below to create a new password:</p>
+        
+        <p style="margin: 20px 0;">
+          <a href="${data.resetLink}" style="background-color: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+            Reset Password
+          </a>
+        </p>
+        
+        <p>If you didn't request this password reset, please ignore this email or contact support if you have concerns.</p>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  }),
+
+  'content-flagged': (data: any) => ({
+    subject: 'Content Flagged for Review',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Content Flagged for Review</h1>
+        <p>Dear Admin,</p>
+        <p>A piece of content has been flagged for review:</p>
+        
+        <div style="background-color: #F3F4F6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Title:</strong> ${data.contentTitle}</p>
+          <p><strong>Type:</strong> ${data.contentType}</p>
+          <p><strong>Reported by:</strong> ${data.reportedBy}</p>
+          <p><strong>Reason:</strong> ${data.reason}</p>
+        </div>
+        
+        <p>Please review this content and take appropriate action.</p>
+        
+        <p>Best regards,<br>Ateker Music System</p>
+      </div>
+    `
+  }),
+
+  'account-suspended': (data: any) => ({
+    subject: 'Account Suspension Notice',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #4F46E5;">Account Suspension Notice</h1>
+        <p>Dear ${data.userName},</p>
+        <p>Your Ateker Music account has been suspended due to violations of our terms of service.</p>
+        
+        <div style="background-color: #F3F4F6; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Reason:</strong> ${data.reason}</p>
+          <p><strong>Duration:</strong> ${data.duration}</p>
+        </div>
+        
+        <p>If you believe this is a mistake or would like to appeal this decision, please contact our support team.</p>
+        
+        <p>Best regards,<br>The Ateker Music Team</p>
+      </div>
+    `
+  })
+}; 
