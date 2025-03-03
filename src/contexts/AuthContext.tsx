@@ -20,9 +20,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        const userData = userDoc.data() as User;
-        setCurrentUser({ ...userData, id: user.uid });
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (!userDoc.exists()) {
+            console.error('User document not found');
+            setCurrentUser(null);
+            return;
+          }
+          const userData = userDoc.data() as User;
+          setCurrentUser({ ...userData, id: user.uid });
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          setCurrentUser(null);
+        }
       } else {
         setCurrentUser(null);
       }

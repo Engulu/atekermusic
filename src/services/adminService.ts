@@ -179,6 +179,16 @@ export const deleteSong = async (songId: string) => {
 
 export const approveArtist = async (artistId: string) => {
   try {
+    const artistDoc = await getDoc(doc(db, 'users', artistId));
+    if (!artistDoc.exists()) {
+      throw new Error('Artist not found');
+    }
+
+    const artistData = artistDoc.data();
+    if (artistData.role !== 'artist') {
+      throw new Error('User is not an artist');
+    }
+
     await updateDoc(doc(db, 'users', artistId), {
       isApproved: true,
       isVerified: true,
