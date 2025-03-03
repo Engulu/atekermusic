@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Users, Music, DollarSign, ChevronDown, Search, Shield, Bell, Settings, Trash2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
 import ProfilePicture from '../components/ProfilePicture';
 import { auth, db } from '../services/firebaseService';
 import { getAdminStats, getUnapprovedArtists, getPendingSongs, approveArtist, approveSong, deleteArtist, deleteSong } from '../services/adminService';
 import type { User, Song } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 type Tab = 'overview' | 'artists' | 'songs' | 'reports' | 'settings';
 
@@ -24,37 +26,36 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAdminAccess = async () => {
-      const user = auth.currentUser;
-      if (!user?.email) {
-        navigate('/signin');
-        return;
-      }
+      try {
+        if (!currentUser) {
+          navigate('/signin');
+          return;
+        }
 
-      // Special handling for admin email
-      if (user.email === 'enochaengulu@gmail.com') {
-        loadDashboardData();
-        return;
-      }
+        if (currentUser.role !== 'admin') {
+          navigate('/');
+          return;
+        }
 
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      const userData = userDoc.data();
-      
-      if (userData?.role !== 'admin') {
-        navigate('/');
-        return;
+        await loadDashboardData();
+      } catch (error) {
+        console.error('Error checking admin access:', error);
       }
-
-      loadDashboardData();
     };
 
     checkAdminAccess();
-  }, [navigate]);
+  }, [currentUser, navigate]);
 
   const loadDashboardData = async () => {
     try {
+      setLoading(true);
+      setError(null); // Clear any previous errors
       const [statsData, artists, songs] = await Promise.all([
         getAdminStats(),
         getUnapprovedArtists(),
@@ -69,6 +70,7 @@ export default function AdminDashboardPage() {
       setPendingSongs(songs);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      setError('Failed to load dashboard data. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -76,21 +78,31 @@ export default function AdminDashboardPage() {
 
   const handleApproveArtist = async (artistId: string) => {
     try {
+      setLoadingAction(`approve-artist-${artistId}`);
+      setError(null); // Clear any previous errors
       await approveArtist(artistId);
       setUnapprovedArtists(prev => prev.filter(artist => artist.id !== artistId));
-      loadDashboardData(); // Refresh stats
+      await loadDashboardData();
     } catch (error) {
       console.error('Error approving artist:', error);
+      setError('Failed to approve artist. Please try again.');
+    } finally {
+      setLoadingAction(null);
     }
   };
 
   const handleApproveSong = async (songId: string) => {
     try {
+      setLoadingAction(`approve-song-${songId}`);
+      setError(null); // Clear any previous errors
       await approveSong(songId);
       setPendingSongs(prev => prev.filter(song => song.id !== songId));
-      loadDashboardData(); // Refresh stats
+      await loadDashboardData();
     } catch (error) {
       console.error('Error approving song:', error);
+      setError('Failed to approve song. Please try again.');
+    } finally {
+      setLoadingAction(null);
     }
   };
 
@@ -100,11 +112,16 @@ export default function AdminDashboardPage() {
     }
 
     try {
+      setLoadingAction(`delete-artist-${artistId}`);
+      setError(null); // Clear any previous errors
       await deleteArtist(artistId);
       setUnapprovedArtists(prev => prev.filter(artist => artist.id !== artistId));
-      loadDashboardData(); // Refresh stats
+      await loadDashboardData();
     } catch (error) {
       console.error('Error deleting artist:', error);
+      setError('Failed to delete artist. Please try again.');
+    } finally {
+      setLoadingAction(null);
     }
   };
 
@@ -114,11 +131,16 @@ export default function AdminDashboardPage() {
     }
 
     try {
+      setLoadingAction(`delete-song-${songId}`);
+      setError(null); // Clear any previous errors
       await deleteSong(songId);
       setPendingSongs(prev => prev.filter(song => song.id !== songId));
-      loadDashboardData(); // Refresh stats
+      await loadDashboardData();
     } catch (error) {
       console.error('Error deleting song:', error);
+      setError('Failed to delete song. Please try again.');
+    } finally {
+      setLoadingAction(null);
     }
   };
 
@@ -246,6 +268,13 @@ export default function AdminDashboardPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <p className="text-red-400">{error}</p>
+          </div>
+        )}
+
         {/* Content */}
         {activeTab === 'overview' && (
           <>
@@ -329,10 +358,19 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleApproveArtist(artist.id)}
-                            className="flex items-center gap-1 px-3 py-1 bg-green-500/10 text-green-400 rounded hover:bg-green-500/20"
+                            disabled={loadingAction === `approve-artist-${artist.id}`}
+                            className={`flex items-center gap-1 px-3 py-1 ${
+                              loadingAction === `approve-artist-${artist.id}`
+                                ? 'bg-green-500/5 text-green-400/50'
+                                : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                            } rounded`}
                           >
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Approve</span>
+                            {loadingAction === `approve-artist-${artist.id}` ? (
+                              <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                            <span>{loadingAction === `approve-artist-${artist.id}` ? 'Approving...' : 'Approve'}</span>
                           </button>
                           <button
                             onClick={() => handleDeleteArtist(artist.id)}
@@ -377,10 +415,19 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleApproveSong(song.id)}
-                            className="flex items-center gap-1 px-3 py-1 bg-green-500/10 text-green-400 rounded hover:bg-green-500/20"
+                            disabled={loadingAction === `approve-song-${song.id}`}
+                            className={`flex items-center gap-1 px-3 py-1 ${
+                              loadingAction === `approve-song-${song.id}`
+                                ? 'bg-green-500/5 text-green-400/50'
+                                : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                            } rounded`}
                           >
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Approve</span>
+                            {loadingAction === `approve-song-${song.id}` ? (
+                              <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                            <span>{loadingAction === `approve-song-${song.id}` ? 'Approving...' : 'Approve'}</span>
                           </button>
                           <button
                             onClick={() => handleDeleteSong(song.id)}

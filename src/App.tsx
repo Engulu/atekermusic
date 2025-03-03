@@ -49,7 +49,7 @@ function App() {
               path="/admin/*" 
               element={
                 <ProtectedAdminRoute>
-                  <AdminDashboard />
+                  <AdminDashboardPage />
                 </ProtectedAdminRoute>
               } 
             />

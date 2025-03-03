@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useFirebase } from '../contexts/FirebaseContext';
+import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db } from '../services/firebaseService';
 
 export function ProtectedAdminRoute({ children }: { children: React.ReactNode }) {
-  const { currentUser } = useFirebase();
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -13,12 +13,12 @@ export function ProtectedAdminRoute({ children }: { children: React.ReactNode })
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!currentUser) {
-        navigate('/login');
+        navigate('/signin');
         return;
       }
 
       try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const userDoc = await getDoc(doc(db, 'users', currentUser.id));
         const isUserAdmin = userDoc.exists() && userDoc.data()?.role === 'admin';
         setIsAdmin(isUserAdmin);
         if (!isUserAdmin) {
@@ -36,7 +36,11 @@ export function ProtectedAdminRoute({ children }: { children: React.ReactNode })
   }, [currentUser, navigate]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-navy-900 pt-24 pb-16 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
+      </div>
+    );
   }
 
   return isAdmin ? <>{children}</> : null;
