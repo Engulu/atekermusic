@@ -46,26 +46,18 @@ function App() {
             />
             <Route path="/events" element={<EventsPage />} />
             <Route
-              path="/admin"
+              path="/admin/*" 
               element={
                 <ProtectedAdminRoute>
-                  <AdminDashboard />
+                  <AdminDashboardPage />
                 </ProtectedAdminRoute>
-              }
+              } 
             />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/legal" element={<LegalPage />} />
             <Route path="/news" element={<NewsPage />} />
             <Route path="/news/:id" element={<ArticlePage />} />
             <Route path="/predictions" element={<BettingPredictionsPage />} />
-            <Route 
-              path="/admin/artists" 
-              element={
-                <ProtectedAdminRoute>
-                  <AdminDashboard />
-                </ProtectedAdminRoute>
-              } 
-            />
           </Routes>
           <hr className="border-gray-700 mx-4 md:mx-8 lg:mx-16" />
           <Footer />

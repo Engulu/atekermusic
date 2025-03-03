@@ -4,16 +4,19 @@ import {
   where,
   getDocs,
   doc,
+  getDoc,
   deleteDoc,
   updateDoc,
   increment,
-  writeBatch
+  writeBatch,
+  Timestamp
 } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from './firebaseService';
-import type { User, Song } from '../types';
+import type { User, Song, ArtistProfile } from '../types';
 
 export const getAdminStats = async () => {
+  console.log('Getting admin stats...');
   const stats = {
     totalUsers: 0,
     totalArtists: 0,
@@ -23,6 +26,7 @@ export const getAdminStats = async () => {
   };
 
   try {
+    console.log('Querying collections...');
     // Get user stats
     const usersQuery = query(collection(db, 'users'));
     const artistsQuery = query(collection(db, 'users'), where('role', '==', 'artist'));
@@ -33,6 +37,12 @@ export const getAdminStats = async () => {
       getDocs(artistsQuery),
       getDocs(songsQuery)
     ]);
+
+    console.log('Collection sizes:', {
+      users: usersSnapshot.size,
+      artists: artistsSnapshot.size,
+      songs: songsSnapshot.size
+    });
 
     stats.totalUsers = usersSnapshot.size;
     stats.totalArtists = artistsSnapshot.size;
@@ -45,6 +55,7 @@ export const getAdminStats = async () => {
       stats.totalRevenue += (song.price || 0) * (song.downloadCount || 0);
     });
 
+    console.log('Final stats:', stats);
     return stats;
   } catch (error) {
     console.error('Error getting admin stats:', error);
@@ -52,7 +63,7 @@ export const getAdminStats = async () => {
   }
 };
 
-export const getUnapprovedArtists = async (): Promise<User[]> => {
+export const getUnapprovedArtists = async (): Promise<ArtistProfile[]> => {
   try {
     const q = query(
       collection(db, 'users'),
@@ -61,7 +72,10 @@ export const getUnapprovedArtists = async (): Promise<User[]> => {
     );
     
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as ArtistProfile));
   } catch (error) {
     console.error('Error getting unapproved artists:', error);
     throw error;
@@ -159,6 +173,31 @@ export const deleteSong = async (songId: string) => {
     });
   } catch (error) {
     console.error('Error deleting song:', error);
+    throw error;
+  }
+};
+
+export const approveArtist = async (artistId: string) => {
+  try {
+    await updateDoc(doc(db, 'users', artistId), {
+      isApproved: true,
+      isVerified: true,
+      updatedAt: Timestamp.now()
+    });
+  } catch (error) {
+    console.error('Error approving artist:', error);
+    throw error;
+  }
+};
+
+export const approveSong = async (songId: string) => {
+  try {
+    await updateDoc(doc(db, 'songs', songId), {
+      isApproved: true,
+      updatedAt: Timestamp.now()
+    });
+  } catch (error) {
+    console.error('Error approving song:', error);
     throw error;
   }
 };

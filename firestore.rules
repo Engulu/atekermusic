@@ -2,11 +2,18 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // User profiles are readable by anyone but only writable by the owner
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
     match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    
+    match /artists/{artistId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == userId;
+      allow write: if isAdmin();
     }
     
     // Songs are readable by anyone but only writable by the artist or admin
