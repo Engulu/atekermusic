@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Camera, Loader2, X } from 'lucide-react';
-import { uploadProfilePicture, deleteProfilePicture } from '../services/userService';
-import { useAuth } from '../contexts/AuthContext';
+import { Camera } from 'lucide-react';
+import ImageCropper from './ImageCropper';
+import { storage } from '../services/firebaseService';
+import { ref, uploadString } from 'firebase/storage';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ProfilePictureProps {
   imageUrl?: string | null;
@@ -10,109 +12,74 @@ interface ProfilePictureProps {
   onUpdate?: (url: string) => void;
 }
 
-export default function ProfilePicture({ 
-  imageUrl, 
+export default function ProfilePicture({
+  imageUrl,
   size = 'md',
   editable = false,
   onUpdate
 }: ProfilePictureProps) {
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
+  const [showCropper, setShowCropper] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const sizeClasses = {
-    sm: 'w-12 h-12',
-    md: 'w-24 h-24',
-    lg: 'w-32 h-32'
+    sm: 'w-8 h-8',
+    md: 'w-12 h-12',
+    lg: 'w-24 h-24'
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !currentUser?.id) return;
-
-    setUploading(true);
-    setError(null);
-
+  const handleImageUpload = async (croppedImage: string) => {
     try {
-      const url = await uploadProfilePicture(currentUser.id, file);
-      onUpdate?.(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload image');
+      setLoading(true);
+      const imageId = uuidv4();
+      const imageRef = ref(storage, `profile-pictures/${imageId}.jpg`);
+      
+      await uploadString(imageRef, croppedImage, 'data_url');
+      const url = await imageRef.getDownloadURL();
+      
+      if (onUpdate) {
+        onUpdate(url);
+      }
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      alert('Failed to upload profile picture. Please try again.');
     } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!imageUrl || !currentUser?.id) return;
-
-    if (!window.confirm('Are you sure you want to remove your profile picture?')) {
-      return;
-    }
-
-    setUploading(true);
-    setError(null);
-
-    try {
-      await deleteProfilePicture(currentUser.id, imageUrl);
-      onUpdate?.('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete image');
-    } finally {
-      setUploading(false);
+      setLoading(false);
+      setShowCropper(false);
     }
   };
 
   return (
     <div className="relative">
-      <div 
-        className={`${sizeClasses[size]} rounded-full overflow-hidden bg-navy-700 relative ${
-          editable ? 'group' : ''
-        }`}
-      >
+      <div className={`${sizeClasses[size]} rounded-full overflow-hidden bg-navy-800`}>
         {imageUrl ? (
-          <img 
-            src={imageUrl} 
-            alt="Profile" 
+          <img
+            src={imageUrl}
+            alt="Profile"
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-navy-700 text-gray-400">
-            {uploading ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : (
-              <Camera className="w-6 h-6" />
-            )}
-          </div>
-        )}
-
-        {editable && !uploading && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-            <label className="cursor-pointer p-2 rounded-full bg-blue-500 hover:bg-blue-600 transition">
-              <Camera className="w-5 h-5 text-white" />
-              <input
-                type="file"
-                className="hidden"
-                accept="image/*"
-                onChange={handleFileChange}
-              />
-            </label>
-            {imageUrl && (
-              <button
-                onClick={handleDelete}
-                className="absolute top-1 right-1 p-1 rounded-full bg-red-500 hover:bg-red-600 transition"
-              >
-                <X className="w-4 h-4 text-white" />
-              </button>
-            )}
+          <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <Camera className="w-1/2 h-1/2" />
           </div>
         )}
       </div>
 
-      {error && (
-        <p className="absolute top-full mt-2 text-sm text-red-400">
-          {error}
-        </p>
+      {editable && (
+        <button
+          onClick={() => setShowCropper(true)}
+          className="absolute bottom-0 right-0 bg-blue-500 text-white p-1.5 rounded-full hover:bg-blue-600"
+          disabled={loading}
+        >
+          <Camera className="w-4 h-4" />
+        </button>
+      )}
+
+      {showCropper && (
+        <ImageCropper
+          onCrop={handleImageUpload}
+          onCancel={() => setShowCropper(false)}
+          aspectRatio={1}
+        />
       )}
     </div>
   );
