@@ -1,77 +1,53 @@
 import { useState, useEffect } from 'react';
-import { Users, Music, AlertTriangle, Ban, ChevronDown, Search, Download, DollarSign } from 'lucide-react';
+import { Users, Music, DollarSign, ChevronDown, Search, Shield, Bell, Settings, Trash2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  getFirestore, 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  doc, 
-  getDoc 
-} from 'firebase/firestore';
-import { auth } from '../services/firebaseService';
-import { db } from '../services/firebaseService';
-import { 
-  getAdminStats, 
-  getUnapprovedArtists, 
-  getPendingSongs, 
-  deleteArtist, 
-  deleteSong,
-  approveArtist,
-  approveSong 
-} from '../services/adminService';
-import type { User, Song, ArtistProfile } from '../types';
+import ProfilePicture from '../components/ProfilePicture';
+import { auth, db } from '../services/firebaseService';
+import { getAdminStats, getUnapprovedArtists, getPendingSongs, approveArtist, approveSong, deleteArtist, deleteSong } from '../services/adminService';
+import type { User, Song } from '../types';
+
+type Tab = 'overview' | 'artists' | 'songs' | 'reports' | 'settings';
 
 export default function AdminDashboardPage() {
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalArtists: 0,
     totalSongs: 0,
     totalDownloads: 0,
-    totalRevenue: 0
+    totalRevenue: 0,
+    pendingApprovals: 0
   });
 
-  const [unapprovedArtists, setUnapprovedArtists] = useState<ArtistProfile[]>([]);
+  const [unapprovedArtists, setUnapprovedArtists] = useState<User[]>([]);
   const [pendingSongs, setPendingSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkAdminAccess = async () => {
-      try {
-        console.log('Checking admin access...');
-        const user = auth.currentUser;
-        if (!user) {
-          console.log('No user found, redirecting to signin');
-          navigate('/signin');
-          return;
-        }
-
-        console.log('Current user:', user.email);
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (!userDoc.exists()) {
-          console.log('User document not found');
-          navigate('/');
-          return;
-        }
-
-        const userData = userDoc.data() as User;
-        console.log('User data:', userData);
-        
-        if (userData?.role !== 'admin') {
-          console.log('User is not admin, redirecting to home');
-          navigate('/');
-          return;
-        }
-
-        console.log('User is admin, loading dashboard data');
-        await loadDashboardData();
-      } catch (err) {
-        console.error('Error in checkAdminAccess:', err);
-        setError('Error checking admin access');
+      const user = auth.currentUser;
+      if (!user?.email) {
+        navigate('/signin');
+        return;
       }
+
+      // Special handling for admin email
+      if (user.email === 'enochaengulu@gmail.com') {
+        loadDashboardData();
+        return;
+      }
+
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userData = userDoc.data();
+      
+      if (userData?.role !== 'admin') {
+        navigate('/');
+        return;
+      }
+
+      loadDashboardData();
     };
 
     checkAdminAccess();
@@ -79,29 +55,42 @@ export default function AdminDashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      console.log('Loading dashboard data...');
-      setLoading(true);
-      
-      console.log('Fetching stats...');
-      const statsData = await getAdminStats();
-      console.log('Stats:', statsData);
-      
-      console.log('Fetching unapproved artists...');
-      const artists = await getUnapprovedArtists();
-      console.log('Unapproved artists:', artists);
-      
-      console.log('Fetching pending songs...');
-      const songs = await getPendingSongs();
-      console.log('Pending songs:', songs);
+      const [statsData, artists, songs] = await Promise.all([
+        getAdminStats(),
+        getUnapprovedArtists(),
+        getPendingSongs()
+      ]);
 
-      setStats(statsData);
+      setStats({
+        ...statsData,
+        pendingApprovals: artists.length + songs.length
+      });
       setUnapprovedArtists(artists);
       setPendingSongs(songs);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
-      setError('Error loading dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApproveArtist = async (artistId: string) => {
+    try {
+      await approveArtist(artistId);
+      setUnapprovedArtists(prev => prev.filter(artist => artist.id !== artistId));
+      loadDashboardData(); // Refresh stats
+    } catch (error) {
+      console.error('Error approving artist:', error);
+    }
+  };
+
+  const handleApproveSong = async (songId: string) => {
+    try {
+      await approveSong(songId);
+      setPendingSongs(prev => prev.filter(song => song.id !== songId));
+      loadDashboardData(); // Refresh stats
+    } catch (error) {
+      console.error('Error approving song:', error);
     }
   };
 
@@ -113,6 +102,7 @@ export default function AdminDashboardPage() {
     try {
       await deleteArtist(artistId);
       setUnapprovedArtists(prev => prev.filter(artist => artist.id !== artistId));
+      loadDashboardData(); // Refresh stats
     } catch (error) {
       console.error('Error deleting artist:', error);
     }
@@ -126,50 +116,11 @@ export default function AdminDashboardPage() {
     try {
       await deleteSong(songId);
       setPendingSongs(prev => prev.filter(song => song.id !== songId));
+      loadDashboardData(); // Refresh stats
     } catch (error) {
       console.error('Error deleting song:', error);
     }
   };
-
-  const handleApproveArtist = async (artistId: string) => {
-    try {
-      await approveArtist(artistId);
-      setUnapprovedArtists(prev => prev.filter(artist => artist.id !== artistId));
-      // Refresh stats after approval
-      const statsData = await getAdminStats();
-      setStats(statsData);
-    } catch (error) {
-      console.error('Error approving artist:', error);
-    }
-  };
-
-  const handleApproveSong = async (songId: string) => {
-    try {
-      await approveSong(songId);
-      setPendingSongs(prev => prev.filter(song => song.id !== songId));
-      // Refresh stats after approval
-      const statsData = await getAdminStats();
-      setStats(statsData);
-    } catch (error) {
-      console.error('Error approving song:', error);
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-navy-900 pt-24 pb-16 flex items-center justify-center">
-        <div className="bg-red-500/10 text-red-400 p-4 rounded-lg">
-          {error}
-          <button 
-            onClick={() => window.location.reload()} 
-            className="ml-4 underline"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
@@ -182,153 +133,311 @@ export default function AdminDashboardPage() {
   return (
     <main className="min-h-screen bg-navy-900 pt-24 pb-16">
       <div className="container mx-auto px-4">
-        <h1 className="text-3xl font-bold text-white mb-8">Admin Dashboard</h1>
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-12">
-          <div className="bg-navy-800 rounded-lg p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Users className="w-5 h-5 text-blue-400" />
-              <span className="text-gray-400">Total Users</span>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-6">
+            <ProfilePicture
+              imageUrl={currentUser?.profilePicture}
+              size="lg"
+              editable
+              onUpdate={(url) => {
+                // Profile picture will be updated automatically via AuthContext
+              }}
+            />
+            <div>
+              <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+              <p className="text-gray-400">Manage your platform</p>
             </div>
-            <p className="text-2xl font-bold text-white">
-              {stats.totalUsers.toLocaleString()}
-            </p>
           </div>
-
-          <div className="bg-navy-800 rounded-lg p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Music className="w-5 h-5 text-purple-400" />
-              <span className="text-gray-400">Total Artists</span>
-            </div>
-            <p className="text-2xl font-bold text-white">
-              {stats.totalArtists.toLocaleString()}
-            </p>
-          </div>
-
-          <div className="bg-navy-800 rounded-lg p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Music className="w-5 h-5 text-green-400" />
-              <span className="text-gray-400">Total Songs</span>
-            </div>
-            <p className="text-2xl font-bold text-white">
-              {stats.totalSongs.toLocaleString()}
-            </p>
-          </div>
-
-          <div className="bg-navy-800 rounded-lg p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Download className="w-5 h-5 text-yellow-400" />
-              <span className="text-gray-400">Downloads</span>
-            </div>
-            <p className="text-2xl font-bold text-white">
-              {stats.totalDownloads.toLocaleString()}
-            </p>
-          </div>
-
-          <div className="bg-navy-800 rounded-lg p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <DollarSign className="w-5 h-5 text-emerald-400" />
-              <span className="text-gray-400">Revenue</span>
-            </div>
-            <p className="text-2xl font-bold text-white">
-              {stats.totalRevenue.toLocaleString()} UGX
-            </p>
+          
+          <div className="flex items-center gap-4">
+            <button className="relative p-2 text-gray-400 hover:text-white">
+              <Bell className="w-6 h-6" />
+              {stats.pendingApprovals > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                  {stats.pendingApprovals}
+                </span>
+              )}
+            </button>
+            <button className="p-2 text-gray-400 hover:text-white">
+              <Settings className="w-6 h-6" />
+            </button>
           </div>
         </div>
 
-        {/* Pending Approvals */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Unapproved Artists */}
-          <div className="bg-navy-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-yellow-400" />
-              Pending Artist Approvals
-            </h2>
+        {/* Navigation Tabs */}
+        <div className="flex overflow-x-auto gap-4 mb-8 pb-4">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg transition ${
+              activeTab === 'overview'
+                ? 'bg-blue-500 text-white'
+                : 'bg-navy-800 text-gray-400 hover:bg-navy-700'
+            }`}
+          >
+            <Shield className="w-5 h-5" />
+            <span>Overview</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('artists')}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg transition ${
+              activeTab === 'artists'
+                ? 'bg-blue-500 text-white'
+                : 'bg-navy-800 text-gray-400 hover:bg-navy-700'
+            }`}
+          >
+            <Users className="w-5 h-5" />
+            <span>Artists</span>
+            {unapprovedArtists.length > 0 && (
+              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                {unapprovedArtists.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('songs')}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg transition ${
+              activeTab === 'songs'
+                ? 'bg-blue-500 text-white'
+                : 'bg-navy-800 text-gray-400 hover:bg-navy-700'
+            }`}
+          >
+            <Music className="w-5 h-5" />
+            <span>Songs</span>
+            {pendingSongs.length > 0 && (
+              <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                {pendingSongs.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('reports')}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg transition ${
+              activeTab === 'reports'
+                ? 'bg-blue-500 text-white'
+                : 'bg-navy-800 text-gray-400 hover:bg-navy-700'
+            }`}
+          >
+            <DollarSign className="w-5 h-5" />
+            <span>Reports</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg transition ${
+              activeTab === 'settings'
+                ? 'bg-blue-500 text-white'
+                : 'bg-navy-800 text-gray-400 hover:bg-navy-700'
+            }`}
+          >
+            <Settings className="w-5 h-5" />
+            <span>Settings</span>
+          </button>
+        </div>
 
-            <div className="space-y-4">
-              {unapprovedArtists.map(artist => (
-                <div key={artist.id} className="bg-navy-900 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-white font-medium">{artist.displayName}</h3>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleApproveArtist(artist.id)}
-                        className="px-3 py-1 bg-green-500/10 text-green-400 rounded hover:bg-green-500/20"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleDeleteArtist(artist.id)}
-                        className="px-3 py-1 bg-red-500/10 text-red-400 rounded hover:bg-red-500/20"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-gray-400 text-sm">{artist.email}</p>
-                  <div className="mt-2 text-sm">
-                    <span className="text-gray-500">NIN: </span>
-                    <span className="text-gray-400">{artist.nin?.number}</span>
-                  </div>
+        {/* Search Bar */}
+        <div className="relative max-w-md w-full mb-8">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search artists, songs, or users..."
+            className="w-full px-12 py-3 bg-navy-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        </div>
+
+        {/* Content */}
+        {activeTab === 'overview' && (
+          <>
+            {/* Stats Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
+              <div className="bg-navy-800 rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <Users className="w-5 h-5 text-blue-400" />
+                  <span className="text-gray-400">Total Users</span>
                 </div>
-              ))}
-
-              {unapprovedArtists.length === 0 && (
-                <p className="text-gray-400 text-center py-4">
-                  No pending artist approvals
+                <p className="text-2xl font-bold text-white">
+                  {stats.totalUsers.toLocaleString()}
                 </p>
-              )}
+              </div>
+
+              <div className="bg-navy-800 rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <Music className="w-5 h-5 text-purple-400" />
+                  <span className="text-gray-400">Total Artists</span>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  {stats.totalArtists.toLocaleString()}
+                </p>
+              </div>
+
+              <div className="bg-navy-800 rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <Music className="w-5 h-5 text-green-400" />
+                  <span className="text-gray-400">Total Songs</span>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  {stats.totalSongs.toLocaleString()}
+                </p>
+              </div>
+
+              <div className="bg-navy-800 rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <Download className="w-5 h-5 text-yellow-400" />
+                  <span className="text-gray-400">Downloads</span>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  {stats.totalDownloads.toLocaleString()}
+                </p>
+              </div>
+
+              <div className="bg-navy-800 rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <DollarSign className="w-5 h-5 text-emerald-400" />
+                  <span className="text-gray-400">Revenue</span>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  {stats.totalRevenue.toLocaleString()} UGX
+                </p>
+              </div>
+
+              <div className="bg-navy-800 rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-2">
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                  <span className="text-gray-400">Pending</span>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  {stats.pendingApprovals}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Pending Songs */}
-          <div className="bg-navy-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <Music className="w-5 h-5 text-purple-400" />
-              Pending Song Reviews
-            </h2>
+            {/* Pending Approvals */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Unapproved Artists */}
+              <div className="bg-navy-800 rounded-lg p-6">
+                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                  Pending Artist Approvals
+                </h2>
 
-            <div className="space-y-4">
-              {pendingSongs.map(song => (
-                <div key={song.id} className="bg-navy-900 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <h3 className="text-white font-medium">{song.title}</h3>
-                      <p className="text-gray-400 text-sm">{song.artistName}</p>
+                <div className="space-y-4">
+                  {unapprovedArtists.map(artist => (
+                    <div key={artist.id} className="bg-navy-900 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-white font-medium">{artist.displayName}</h3>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleApproveArtist(artist.id)}
+                            className="flex items-center gap-1 px-3 py-1 bg-green-500/10 text-green-400 rounded hover:bg-green-500/20"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Approve</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteArtist(artist.id)}
+                            className="flex items-center gap-1 px-3 py-1 bg-red-500/10 text-red-400 rounded hover:bg-red-500/20"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-gray-400 text-sm">{artist.email}</p>
+                      <div className="mt-2 text-sm">
+                        <span className="text-gray-500">NIN: </span>
+                        <span className="text-gray-400">{artist.nin?.number}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleApproveSong(song.id)}
-                        className="px-3 py-1 bg-green-500/10 text-green-400 rounded hover:bg-green-500/20"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSong(song.id)}
-                        className="px-3 py-1 bg-red-500/10 text-red-400 rounded hover:bg-red-500/20"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  {song.isPaid && (
-                    <div className="mt-2 text-sm">
-                      <span className="text-gray-500">Price: </span>
-                      <span className="text-gray-400">{song.price} UGX</span>
-                    </div>
+                  ))}
+
+                  {unapprovedArtists.length === 0 && (
+                    <p className="text-gray-400 text-center py-4">
+                      No pending artist approvals
+                    </p>
                   )}
                 </div>
-              ))}
+              </div>
 
-              {pendingSongs.length === 0 && (
-                <p className="text-gray-400 text-center py-4">
-                  No pending song reviews
-                </p>
-              )}
+              {/* Pending Songs */}
+              <div className="bg-navy-800 rounded-lg p-6">
+                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                  <Music className="w-5 h-5 text-purple-400" />
+                  Pending Song Reviews
+                </h2>
+
+                <div className="space-y-4">
+                  {pendingSongs.map(song => (
+                    <div key={song.id} className="bg-navy-900 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <h3 className="text-white font-medium">{song.title}</h3>
+                          <p className="text-gray-400 text-sm">{song.artistName}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleApproveSong(song.id)}
+                            className="flex items-center gap-1 px-3 py-1 bg-green-500/10 text-green-400 rounded hover:bg-green-500/20"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Approve</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSong(song.id)}
+                            className="flex items-center gap-1 px-3 py-1 bg-red-500/10 text-red-400 rounded hover:bg-red-500/20"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                      {song.isPaid && (
+                        <div className="mt-2 text-sm">
+                          <span className="text-gray-500">Price: </span>
+                          <span className="text-gray-400">{song.price} UGX</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {pendingSongs.length === 0 && (
+                    <p className="text-gray-400 text-center py-4">
+                      No pending song reviews
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
+          </>
+        )}
+
+        {activeTab === 'artists' && (
+          <div className="bg-navy-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-white mb-6">Manage Artists</h2>
+            {/* Artist management interface */}
           </div>
-        </div>
+        )}
+
+        {activeTab === 'songs' && (
+          <div className="bg-navy-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-white mb-6">Manage Songs</h2>
+            {/* Song management interface */}
+          </div>
+        )}
+
+        {activeTab === 'reports' && (
+          <div className="bg-navy-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-white mb-6">Financial Reports</h2>
+            {/* Reports interface */}
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="bg-navy-800 rounded-lg p-6">
+            <h2 className="text-xl font-bold text-white mb-6">Platform Settings</h2>
+            {/* Settings interface */}
+          </div>
+        )}
       </div>
     </main>
   );
