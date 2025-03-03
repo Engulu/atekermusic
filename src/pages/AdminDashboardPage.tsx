@@ -27,25 +27,38 @@ export default function AdminDashboardPage() {
   const [unapprovedArtists, setUnapprovedArtists] = useState<ArtistProfile[]>([]);
   const [pendingSongs, setPendingSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkAdminAccess = async () => {
-      const user = auth.currentUser;
-      if (!user) {
-        navigate('/signin');
-        return;
-      }
+      try {
+        console.log('Checking admin access...');
+        const user = auth.currentUser;
+        if (!user) {
+          console.log('No user found, redirecting to signin');
+          navigate('/signin');
+          return;
+        }
 
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      const userData = userDoc.data() as User;
-      
-      if (userData?.role !== 'admin') {
-        navigate('/');
-        return;
-      }
+        console.log('Current user:', user.email);
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const userData = userDoc.data() as User;
+        
+        console.log('User data:', userData);
+        
+        if (userData?.role !== 'admin') {
+          console.log('User is not admin, redirecting to home');
+          navigate('/');
+          return;
+        }
 
-      loadDashboardData();
+        console.log('User is admin, loading dashboard data');
+        await loadDashboardData();
+      } catch (err) {
+        console.error('Error in checkAdminAccess:', err);
+        setError('Error checking admin access');
+      }
     };
 
     checkAdminAccess();
@@ -53,18 +66,27 @@ export default function AdminDashboardPage() {
 
   const loadDashboardData = async () => {
     try {
+      console.log('Loading dashboard data...');
       setLoading(true);
-      const [statsData, artists, songs] = await Promise.all([
-        getAdminStats(),
-        getUnapprovedArtists(),
-        getPendingSongs()
-      ]);
+      
+      console.log('Fetching stats...');
+      const statsData = await getAdminStats();
+      console.log('Stats:', statsData);
+      
+      console.log('Fetching unapproved artists...');
+      const artists = await getUnapprovedArtists();
+      console.log('Unapproved artists:', artists);
+      
+      console.log('Fetching pending songs...');
+      const songs = await getPendingSongs();
+      console.log('Pending songs:', songs);
 
       setStats(statsData);
       setUnapprovedArtists(artists);
       setPendingSongs(songs);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      setError('Error loading dashboard data');
     } finally {
       setLoading(false);
     }
@@ -119,6 +141,22 @@ export default function AdminDashboardPage() {
       console.error('Error approving song:', error);
     }
   };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-navy-900 pt-24 pb-16 flex items-center justify-center">
+        <div className="bg-red-500/10 text-red-400 p-4 rounded-lg">
+          {error}
+          <button 
+            onClick={() => window.location.reload()} 
+            className="ml-4 underline"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

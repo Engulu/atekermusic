@@ -16,6 +16,7 @@ import { db, storage } from './firebaseService';
 import type { User, Song, ArtistProfile } from '../types';
 
 export const getAdminStats = async () => {
+  console.log('Getting admin stats...');
   const stats = {
     totalUsers: 0,
     totalArtists: 0,
@@ -25,6 +26,7 @@ export const getAdminStats = async () => {
   };
 
   try {
+    console.log('Querying collections...');
     // Get user stats
     const usersQuery = query(collection(db, 'users'));
     const artistsQuery = query(collection(db, 'users'), where('role', '==', 'artist'));
@@ -35,6 +37,12 @@ export const getAdminStats = async () => {
       getDocs(artistsQuery),
       getDocs(songsQuery)
     ]);
+
+    console.log('Collection sizes:', {
+      users: usersSnapshot.size,
+      artists: artistsSnapshot.size,
+      songs: songsSnapshot.size
+    });
 
     stats.totalUsers = usersSnapshot.size;
     stats.totalArtists = artistsSnapshot.size;
@@ -47,6 +55,7 @@ export const getAdminStats = async () => {
       stats.totalRevenue += (song.price || 0) * (song.downloadCount || 0);
     });
 
+    console.log('Final stats:', stats);
     return stats;
   } catch (error) {
     console.error('Error getting admin stats:', error);
