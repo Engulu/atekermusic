@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Users, Music, AlertTriangle, Ban, ChevronDown, Search, Download, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  getFirestore, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  doc, 
+  getDoc 
+} from 'firebase/firestore';
 import { auth } from '../services/firebaseService';
 import { db } from '../services/firebaseService';
-import { doc, getDoc } from 'firebase/firestore';
 import { 
   getAdminStats, 
   getUnapprovedArtists, 
@@ -43,8 +51,13 @@ export default function AdminDashboardPage() {
 
         console.log('Current user:', user.email);
         const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!userDoc.exists()) {
+          console.log('User document not found');
+          navigate('/');
+          return;
+        }
+
         const userData = userDoc.data() as User;
-        
         console.log('User data:', userData);
         
         if (userData?.role !== 'admin') {
