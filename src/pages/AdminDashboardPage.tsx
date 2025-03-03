@@ -79,7 +79,7 @@ export default function AdminDashboardPage() {
   const handleApproveArtist = async (artistId: string) => {
     try {
       setLoadingAction(`approve-artist-${artistId}`);
-      setError(null); // Clear any previous errors
+      setError(null);
       await approveArtist(artistId);
       setUnapprovedArtists(prev => prev.filter(artist => artist.id !== artistId));
       await loadDashboardData();
