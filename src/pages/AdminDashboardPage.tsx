@@ -1,9 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Users, Music, AlertTriangle, Ban, ChevronDown, Search } from 'lucide-react';
+import { Users, Music, AlertTriangle, Ban, ChevronDown, Search, Download, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../services/firebaseService';
-import { getAdminStats, getUnapprovedArtists, getPendingSongs, deleteArtist, deleteSong } from '../services/adminService';
-import type { User, Song } from '../types';
+import { db } from '../services/firebaseService';
+import { doc, getDoc } from 'firebase/firestore';
+import { 
+  getAdminStats, 
+  getUnapprovedArtists, 
+  getPendingSongs, 
+  deleteArtist, 
+  deleteSong,
+  approveArtist,
+  approveSong 
+} from '../services/adminService';
+import type { User, Song, ArtistProfile } from '../types';
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
@@ -14,7 +24,7 @@ export default function AdminDashboardPage() {
     totalRevenue: 0
   });
 
-  const [unapprovedArtists, setUnapprovedArtists] = useState<User[]>([]);
+  const [unapprovedArtists, setUnapprovedArtists] = useState<ArtistProfile[]>([]);
   const [pendingSongs, setPendingSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -28,7 +38,7 @@ export default function AdminDashboardPage() {
       }
 
       const userDoc = await getDoc(doc(db, 'users', user.uid));
-      const userData = userDoc.data();
+      const userData = userDoc.data() as User;
       
       if (userData?.role !== 'admin') {
         navigate('/');
@@ -43,6 +53,7 @@ export default function AdminDashboardPage() {
 
   const loadDashboardData = async () => {
     try {
+      setLoading(true);
       const [statsData, artists, songs] = await Promise.all([
         getAdminStats(),
         getUnapprovedArtists(),
@@ -82,6 +93,30 @@ export default function AdminDashboardPage() {
       setPendingSongs(prev => prev.filter(song => song.id !== songId));
     } catch (error) {
       console.error('Error deleting song:', error);
+    }
+  };
+
+  const handleApproveArtist = async (artistId: string) => {
+    try {
+      await approveArtist(artistId);
+      setUnapprovedArtists(prev => prev.filter(artist => artist.id !== artistId));
+      // Refresh stats after approval
+      const statsData = await getAdminStats();
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error approving artist:', error);
+    }
+  };
+
+  const handleApproveSong = async (songId: string) => {
+    try {
+      await approveSong(songId);
+      setPendingSongs(prev => prev.filter(song => song.id !== songId));
+      // Refresh stats after approval
+      const statsData = await getAdminStats();
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error approving song:', error);
     }
   };
 
