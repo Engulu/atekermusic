@@ -19,14 +19,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        const userData = userDoc.data() as User;
-        setCurrentUser({ ...userData, id: user.uid });
-      } else {
+      try {
+        if (user) {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (!userDoc.exists()) {
+            console.error('User document not found');
+            setCurrentUser(null);
+            return;
+          }
+          const userData = userDoc.data() as User;
+          setCurrentUser({ ...userData, id: user.uid });
+        } else {
+          setCurrentUser(null);
+        }
+      } catch (error) {
+        console.error('Error in auth state change:', error);
         setCurrentUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return unsubscribe;
@@ -34,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ currentUser, loading }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

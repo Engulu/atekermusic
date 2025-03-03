@@ -31,6 +31,11 @@ export default function AdminDashboardPage() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('AdminDashboardPage mounted');
+    console.log('Current user:', currentUser);
+  }, [currentUser]);
+
+  useEffect(() => {
     const checkAdminAccess = async () => {
       try {
         if (!currentUser) {
