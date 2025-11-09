@@ -6,26 +6,39 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-    <link rel="icon" type="image/png" href="%VITE_APP_LOGO%" />
-    <link rel="apple-touch-icon" href="%VITE_APP_LOGO%" />
-    <title>%VITE_APP_TITLE%</title>
-    <!-- Add Google Fonts here, example:
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" id="favicon" />
+    <link rel="apple-touch-icon" id="apple-touch-icon" />
+
+    <!-- Title -->
+    <title id="page-title"></title>
+
   </head>
 
   <body>
     <div id="root"></div>
+
+    <script type="module">
+      const favicon = document.getElementById('favicon');
+      const appleIcon = document.getElementById('apple-touch-icon');
+      const title = document.getElementById('page-title');
+
+      favicon.href = import.meta.env.VITE_APP_LOGO;
+      appleIcon.href = import.meta.env.VITE_APP_LOGO;
+      title.innerText = import.meta.env.VITE_APP_TITLE;
+
+      if (import.meta.env.VITE_ANALYTICS_ENDPOINT && import.meta.env.VITE_ANALYTICS_WEBSITE_ID) {
+        const script = document.createElement('script');
+        script.defer = true;
+        script.src = `${import.meta.env.VITE_ANALYTICS_ENDPOINT}/umami`;
+        script.setAttribute('data-website-id', import.meta.env.VITE_ANALYTICS_WEBSITE_ID);
+        document.body.appendChild(script);
+      }
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
-    <script
-      defer
-      src="%VITE_ANALYTICS_ENDPOINT%/umami"
-      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
   </body>
 
 </html>
