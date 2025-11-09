@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, Profile } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
+import { useLocation } from 'wouter';
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [, setLocation] = useLocation();
 
   useEffect(() => {
     // Get initial session
@@ -28,7 +30,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id).then(() => {
+          if (session.user) setLocation('/dashboard');
+        });
       } else {
         setLoading(false);
       }
@@ -41,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id).then(() => setLocation('/dashboard'));
       } else {
         setProfile(null);
         setLoading(false);
@@ -49,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [setLocation]);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -58,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select('*')
         .eq('id', userId)
         .single();
-
       if (error) throw error;
       setProfile(data);
     } catch (error) {
@@ -75,24 +78,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   };
 
   const signUp = async (email: string, password: string, profileData: Partial<Profile>) => {
-    // Sign up the user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
+    const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
     if (authError) throw authError;
     if (!authData.user) throw new Error('Failed to create user');
 
-    // Create profile
     const { error: profileError } = await supabase.from('profiles').insert({
       id: authData.user.id,
       email,
@@ -100,16 +94,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: 'artist',
       is_approved: false,
     });
-
     if (profileError) throw profileError;
   };
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/dashboard` },
     });
     if (error) throw error;
   };
@@ -119,19 +110,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
-  const value = {
-    user,
-    profile,
-    session,
-    loading,
-    signIn,
-    signUp,
-    signInWithGoogle,
-    signOut,
-    refreshProfile,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{ user, profile, session, loading, signIn, signUp, signInWithGoogle, signOut, refreshProfile }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
