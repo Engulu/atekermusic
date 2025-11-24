@@ -1,0 +1,16 @@
+# Ateker Music - Robots.txt
+# Allow all search engines to crawl the site
+
+User-agent: *
+Allow: /
+
+# Disallow admin and private pages
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /upload
+
+# Sitemap location
+Sitemap: https://atekermusic.com/sitemap.xml
+
+# Crawl-delay (be nice to servers)
+Crawl-delay: 1
